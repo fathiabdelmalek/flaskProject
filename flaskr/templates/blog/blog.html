@@ -1,18 +1,14 @@
 {% extends 'base.html' %}
 
 {% block header %}
-  <h1>{% block title %}Blogs{% endblock %}</h1>
-  {% if g.user %}
-    <a class="action" href="{{ url_for('blog.create') }}">New</a>
-  {% endif %}
+  <h1>{% block title %}{{ blog['title'] }}{% endblock %}</h1>
 {% endblock %}
 
 {% block content %}
-{% for blog in blogs %}
 <article class="post">
     <header>
         <div>
-            <h1><a href="{{ url_for('blog.blog_page', id=blog['id']) }}">{{ blog['title'] }}</a></h1>
+            <h1>{{ blog['title'] }}</h1>
             <div class="about">by {{ blog['username'] }} on {{ blog['created'].strftime('%Y-%m-%d') }}</div>
         </div>
         {% if g.user['id'] == blog['author_id'] %}
@@ -21,5 +17,4 @@
     </header>
     <p class="body">{{ blog['body'] }}</p>
 </article>
-{% endfor %}
 {% endblock %}

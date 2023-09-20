@@ -12,12 +12,12 @@ bp = Blueprint('blog', __name__)
 @bp.route('/')
 def index():
     db = get_db()
-    posts = db.execute(
+    blogs = db.execute(
         'SELECT p.id, p.title, p.body, p.created, p.author_id, u.username'
-        ' FROM post p JOIN user u ON p.author_id = u.id'
+        ' FROM blog p JOIN user u ON p.author_id = u.id'
         ' ORDER BY created DESC'
     ).fetchall()
-    return render_template('blog/index.html', posts=posts)
+    return render_template('blog/index.html', blogs=blogs)
 
 
 @bp.route('/create', methods=('GET', 'POST'))
@@ -35,14 +35,15 @@ def create():
             try:
                 db = get_db()
                 db.execute(
-                    'INSERT INTO post (title, body, author_id)'
+                    'INSERT INTO blog (title, body, author_id)'
                     ' VALUES (?, ?, ?)',
                     (title, body, g.user['id'])
                 )
                 db.commit()
             except db.IntegrityError:
-                error = f"Post with this title already exists."
+                error = f"Blog with this title already exists."
             else:
+                flash("Blog created successfully", "success")
                 return redirect(url_for('blog.index'))
 
         flash(error)
@@ -51,26 +52,32 @@ def create():
 
 
 def read(id, check_author=True):
-    post = get_db().execute(
+    blog = get_db().execute(
         'SELECT p.id, p.title, p.body, p.created, p.author_id, u.username'
-        ' FROM post p JOIN user u ON p.author_id = u.id'
+        ' FROM blog p JOIN user u ON p.author_id = u.id'
         ' WHERE p.id = ?',
         (id,)
     ).fetchone()
 
-    if post is None:
-        abort(404, f"Post id {id} doesn't exist.")
+    if blog is None:
+        abort(404, f"Bost id {id} doesn't exist.")
 
-    if check_author and post['author_id'] != g.user['id']:
+    if check_author and blog['author_id'] != g.user['id']:
         abort(403)
 
-    return post
+    return blog
+
+
+@bp.route('/<int:id>')
+def blog_page(id):
+    blog = read(id, False)
+    return render_template('blog/blog.html', blog=blog)
 
 
 @bp.route('/<int:id>/update', methods=('GET', 'POST'))
 @login_required
 def update(id):
-    post = read(id)
+    blog = read(id)
 
     if request.method == 'POST':
         title = request.form['title']
@@ -84,19 +91,20 @@ def update(id):
             try:
                 db = get_db()
                 db.execute(
-                    'UPDATE post SET title = ?, body = ?'
+                    'UPDATE blog SET title = ?, body = ?'
                     ' WHERE id = ?',
                     (title, body, id)
                 )
                 db.commit()
             except db.IntegrityError:
-                error = f"Post with this title already exists."
+                error = f"Blog with this title already exists."
             else:
+                flash("Blog updated successfully", "success")
                 return redirect(url_for('blog.index'))
 
-        flash(error)
+        flash(error, "error")
 
-    return render_template('blog/update.html', post=post)
+    return render_template('blog/update.html', blog=blog)
 
 
 @bp.route('/<int:id>/delete', methods=('POST',))
@@ -104,6 +112,11 @@ def update(id):
 def delete(id):
     read(id)
     db = get_db()
-    db.execute('DELETE FROM post WHERE id = ?', (id,))
-    db.commit()
+    try:
+        db.execute('DELETE FROM blog WHERE id = ?', (id,))
+        db.commit()
+    except db.Error:
+        flash("Failed to delete blog", "error")
+    else:
+        flash("Blog deleted successfully", "success")
     return redirect(url_for('blog.index'))

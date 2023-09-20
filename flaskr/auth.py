@@ -37,9 +37,10 @@ def register():
             except db.IntegrityError:
                 error = f"User {username} is already registered."
             else:
+                flash("User created successfully", "success")
                 return redirect(url_for("auth.login"))
 
-        flash(error)
+        flash(error, "error")
 
     return render_template('auth/register.html')
 
@@ -61,11 +62,19 @@ def login():
         if error is None:
             session.clear()
             session['user_id'] = user['id']
+            flash(f"Welcome back {username}", "success")
             return redirect(url_for('index'))
 
-        flash(error)
+        flash(error, "error")
 
     return render_template('auth/login.html')
+
+
+@bp.route('/logout')
+def logout():
+    session.clear()
+    flash("Logout success", "success")
+    return redirect(url_for('index'))
 
 
 @bp.before_app_request
@@ -78,12 +87,6 @@ def load_logged_in_user():
         g.user = get_db().execute(
             'SELECT * FROM user WHERE id = ?', (user_id,)
         ).fetchone()
-
-
-@bp.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('index'))
 
 
 def login_required(view):
